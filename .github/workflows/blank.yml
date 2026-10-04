@@ -1,36 +1,65 @@
-# This is a basic workflow to help you get started with Actions
+name: Build and publish website
 
-name: CI
-
-# Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the "main" branch
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  schedule:
+     #Build once per day, at 03:15 UTC
+    - cron: "15 3 * * *"
 
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
+  publish:
     runs-on: ubuntu-latest
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v4
 
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
-
-      # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
+      - name: clone fmhy
         run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
+          git clone --depth 1 --branch main \
+            https://github.com/fmhy/edit.git/ \
+            source
+   
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: source/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: source
+        run: pnpm install --frozen-lockfile
+
+      - name: Build FMHY website
+        working-directory: source
+        run: |
+          pnpm docs:build -- --base /
+
+
+      - name: Copy generated files into deployment directory
+        working-directory: source
+        run: |
+          rm -rf _site
+          mkdir -p _site
+          cp -a docs/.vitepress/dist _site
+
+       
+       # This redirect is used by the www deployment below.
+      - name: Add www-to-apex redirect
+        working-directory: source
+        run: |
+          printf '%s\n' \
+            '//www.fmhy.vencat.dev/* https://fmhy.vencat.dev/:splat 301!' \
+            '//www.vencat.dev/* https://vencat.dev/:splat 301!' \
+            '//www.vencat.dev/* https://vencat.dev/:splat 301!' \
+            > _site/_redirects
+
+      - name: Publish to existing custom domain
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: source/_site

@@ -17,7 +17,7 @@ jobs:
         run: |
           git clone --depth 1 --branch main \
             https://github.com/fmhy/edit.git/ \
-            source
+            "$RUNNER_TEMP/site"
    
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
@@ -29,20 +29,21 @@ jobs:
         with:
           node-version: 25.2.1
           cache: pnpm
-          cache-dependency-path: source/pnpm-lock.yaml
+          cache-dependency-path: ${{ runner.temp }}site/pnpm-lock.yaml
 
       - name: Install dependencies
-        working-directory: source
-        run: pnpm install --frozen-lockfile
+        working-directory: ${{ runner.temp }}/site
+        run: |
+          pnpm install --frozen-lockfile
         
       - name: Build FMHY website
-        working-directory: source
+        working-directory: site
         run: |
           pnpm docs:build -- --base /
 
 
       - name: Copy generated files into deployment directory
-        working-directory: source
+        working-directory: site
         run: |
           rm -rf _site
           mkdir -p _site
@@ -50,16 +51,16 @@ jobs:
 
        
        # This redirect is used by the www deployment below.
-      - name: Add www-to-apex redirect
-        working-directory: source
-        run: |
-          printf '%s\n' \
-            '//www.fmhy.vencat.dev/* https://fmhy.vencat.dev/:splat 301!' \
-            '//www.vencat.dev/* https://vencat.dev/:splat 301!' \
-            '//www.vencat.dev/* https://vencat.dev/:splat 301!' \
-            > _site/_redirects
+      # - name: Add www-to-apex redirect
+      #   working-directory: site
+      #   run: |
+      #     printf '%s\n' \
+      #       '//www.fmhy.vencat.dev/* https://fmhy.vencat.dev/:splat 301!' \
+      #       '//www.vencat.dev/* https://vencat.dev/:splat 301!' \
+      #       '//www.vencat.dev/* https://vencat.dev/:splat 301!' \
+      #       > _site/_redirects
 
       - name: Publish to existing custom domain
         uses: actions/upload-pages-artifact@v3
         with:
-          path: source/_site
+          path: site/_site

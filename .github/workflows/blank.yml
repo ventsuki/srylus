@@ -1,14 +1,20 @@
 name: Build and publish website
 
 on:
-  schedule:
-     #Build once per day, at 03:15 UTC
-    - cron: "15 3 * * *"
+  # schedule:
+  #    #Build once per day, at 03:15 UTC
+  #   - cron: "15 3 * * *"
 
   workflow_dispatch:
 
+# added perms to make sure
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
-  publish:
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -38,14 +44,16 @@ jobs:
         working-directory: ${{ runner.temp }}/site
         run: |
           pnpm docs:build --base /
+          ls "$RUNNER_TEMP/docs/.vitepress"
 
+      ### removed copying as unnecessary step - also redirects
 
-      - name: Copy generated files into deployment directory
-        working-directory: ${{ runner.temp }}/site
-        run: |
-          rm -rf _site
-          mkdir -p _site
-          cp -a docs/.vitepress/dist _site
+      # - name: Copy generated files into deployment directory
+      #   working-directory: ${{ runner.temp }}/site
+      #   run: |
+      #     rm -rf _site
+      #     mkdir -p _site
+      #     cp -a docs/.vitepress/dist _site
 
        
        # This redirect is used by the www deployment below.
@@ -58,7 +66,18 @@ jobs:
       #       '//www.vencat.dev/* https://vencat.dev/:splat 301!' \
       #       > _site/_redirects
 
-      - name: Publish to existing custom domain
+      - name: upload pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ${{ runner.temp }}/site/_site
+          path: ${{ runner.temp }}/site/docs/.vitepress/dist
+
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

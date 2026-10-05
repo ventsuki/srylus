@@ -44,7 +44,7 @@ jobs:
         working-directory: ${{ runner.temp }}/site
         run: |
           pnpm docs:build --base /
-          ls "$RUNNER_TEMP/docs/.vitepress"
+          ls "$RUNNER_TEMP/site/docs/.vitepress/dist"
 
       ### removed copying as unnecessary step - also redirects
 

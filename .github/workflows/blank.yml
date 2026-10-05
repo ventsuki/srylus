@@ -35,13 +35,13 @@ jobs:
           pnpm install --frozen-lockfile
         
       - name: Build FMHY website
-        working-directory: site
+        working-directory: ${{ runner.temp }}/site
         run: |
           pnpm docs:build --base /
 
 
       - name: Copy generated files into deployment directory
-        working-directory: site
+        working-directory: ${{ runner.temp }}/site
         run: |
           rm -rf _site
           mkdir -p _site
@@ -61,4 +61,4 @@ jobs:
       - name: Publish to existing custom domain
         uses: actions/upload-pages-artifact@v3
         with:
-          path: site/_site
+          path: ${{ runner.temp }}/site/_site
